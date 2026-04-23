@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/contexts/cart-context";
+import { AuthProvider } from "@/contexts/auth-context";
 
 export const metadata: Metadata = {
-  title: "Culiner Yuk | Aplikasi Catering Online",
-  description: "Pesan catering berkualitas dengan cepat, aman, dan rasa terjamin.",
+  title: "Culiner Yuk | Premium Catering Service",
+  description: "Pesan catering berkualitas dengan cita rasa mewah untuk setiap momen spesial Anda.",
 };
 
 export default function RootLayout({
@@ -15,9 +16,11 @@ export default function RootLayout({
   return (
     <html lang="id" className="scroll-smooth">
       <body>
-        <CartProvider>
-          {children}
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

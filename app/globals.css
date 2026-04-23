@@ -2,23 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: theme("colors.surface");
-  --foreground: theme("colors.text");
-}
-
-html {
-  scroll-behavior: smooth;
-  overflow-x: hidden;
-}
-
-body {
-  @apply bg-[var(--background)] text-[var(--foreground)] antialiased;
-}
-
-/* Safe animation utility (no opacity) */
-@layer utilities {
-  .safe-enter {
-    @apply translate-y-0 scale-100;
+@layer base {
+  :root {
+    /* Background Cream Terang */
+    --background: 30 30% 97%;
+    /* Teks Utama: Coklat Tua Gelap (Pasti Kelihatan) */
+    --foreground: 25 50% 14%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 25 50% 14%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 25 50% 14%;
+    
+    --primary: 25 45% 42%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 30 20% 93%;
+    --secondary-foreground: 25 50% 14%;
+    
+    /* Teks Sekunder: Coklat Sedang (Masih Jelas) */
+    --muted: 30 20% 95%;
+    --muted-foreground: 25 35% 38%;
+    
+    --accent: 30 25% 91%;
+    --accent-foreground: 25 50% 14%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 30 20% 89%;
+    --input: 30 20% 89%;
+    --ring: 25 45% 42%;
+    
+    --radius: 0.75rem;
   }
 }
+
+@layer base {
+  * { @apply border-border; }
+  
+  body { 
+    @apply bg-background text-foreground font-sans; 
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 { 
+    @apply font-serif font-bold text-foreground; 
+  }
+  
+  /* Force semua teks punya kontras minimum */
+  p, span, label, a, li, td, th { 
+    @apply text-foreground; 
+  }
+  
+  /* Teks sekunder tetap readable */
+  .text-muted, .text-gray-500, .text-gray-400 { 
+    @apply !text-brown-700; 
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--primary)); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground)); }

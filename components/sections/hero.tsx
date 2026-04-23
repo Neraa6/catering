@@ -33,7 +33,7 @@ export default function Hero() {
             <Button 
               size="lg" 
               onClick={scrollToPackages}
-              className="bg-brand-500 hover:bg-brand-600 text-white"
+              className="bg-brand-500 hover:bg-brand-600 text-brown"
             >
               Lihat Menu <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

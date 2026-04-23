@@ -33,7 +33,7 @@ export default function AddToCartButton({ paket }: AddToCartButtonProps) {
     <Button
       onClick={handleAddToCart}
       disabled={added}
-      className="w-full h-12 text-lg font-semibold bg-brand-500 hover:bg-brand-600 text-white disabled:opacity-70"
+      className="w-full h-12 text-lg font-semibold bg-brand-500 hover:bg-brand-600 text-white disabled:opacity-70 text-brown"
     >
       {added ? (
         <>

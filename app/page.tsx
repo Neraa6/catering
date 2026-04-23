@@ -60,7 +60,7 @@ export default async function Home() {
                     
                     {/* Tombol Pesan */}
                     <Link href={`/paket/${pkg.id.toString()}`} className="flex-1">
-                      <Button className="w-full bg-brand-500 hover:bg-brand-600 text-white">
+                      <Button className="w-full bg-brand-500 hover:bg-brand-600 text-brown">
                         Pesan Paket Ini
                       </Button>
                     </Link>
