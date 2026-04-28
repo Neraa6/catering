@@ -2,6 +2,29 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+// ✅ Helper function untuk convert BigInt ke string
+function serializeBigInt(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  
+  if (typeof obj === "bigint") {
+    return obj.toString();
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(serializeBigInt);
+  }
+  
+  if (typeof obj === "object") {
+    const result: any = {};
+    for (const key in obj) {
+      result[key] = serializeBigInt(obj[key]);
+    }
+    return result;
+  }
+  
+  return obj;
+}
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
@@ -19,7 +42,7 @@ export async function POST(request: Request) {
 
       if (pelanggan) {
         user = {
-          id: pelanggan.id.toString(),
+          id: pelanggan.id, // Masih BigInt, nanti di-serialize
           name: pelanggan.nama_pelanggan,
           email: pelanggan.email,
           password: pelanggan.password,
@@ -45,12 +68,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Return user without password
+    // ✅ Hapus password DAN serialize BigInt sebelum response
     const { password: _, ...userWithoutPassword } = user;
+    const serializedUser = serializeBigInt(userWithoutPassword);
 
     return NextResponse.json({
       success: true,
-      user: userWithoutPassword,
+      user: serializedUser,
     });
   } catch (error) {
     console.error("Login error:", error);
