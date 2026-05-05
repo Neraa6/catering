@@ -6,158 +6,146 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // 1. Hash password untuk user
-  const hashedPassword = await bcrypt.hash('admin123', 10)
-  const hashedPasswordPelanggan = await bcrypt.hash('user123', 10)
+  // Hash passwords
+  const hashedAdmin = await bcrypt.hash('admin123', 10)
+  const hashedOwner = await bcrypt.hash('owner123', 10)
+  const hashedKurir = await bcrypt.hash('kurir123', 10)
+  const hashedPelanggan = await bcrypt.hash('user123', 10)
 
-  // 2. Buat User (Admin/Owner)
-  const admin = await prisma.user.create({
-    data: {
+  // 1. Admin (upsert: update if exists, create if not)
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@culineryuk.com' },
+    update: { 
+      name: 'Admin Culiner',
+      level: 'admin',
+      password: hashedAdmin 
+    },
+    create: {
       name: 'Admin Culiner',
       email: 'admin@culineryuk.com',
-      password: hashedPassword,
+      password: hashedAdmin,
       level: 'admin',
     },
   })
-  console.log('✅ Admin created:', admin.email)
+  console.log('✅ Admin:', admin.email)
 
-  // 3. Buat Pelanggan
-  const pelanggan1 = await prisma.pelanggan.create({
-    data: {
+  // 2. Owner
+  const owner = await prisma.user.upsert({
+    where: { email: 'owner@culineryuk.com' },
+    update: { 
+      name: 'Owner Culiner',
+      level: 'owner',
+      password: hashedOwner 
+    },
+    create: {
+      name: 'Owner Culiner',
+      email: 'owner@culineryuk.com',
+      password: hashedOwner,
+      level: 'owner',
+    },
+  })
+  console.log('✅ Owner:', owner.email)
+
+  // 3. Kurir
+  const kurir = await prisma.user.upsert({
+    where: { email: 'kurir@culineryuk.com' },
+    update: { 
+      name: 'Kurir Andi',
+      level: 'kurir',
+      password: hashedKurir 
+    },
+    create: {
+      name: 'Kurir Andi',
+      email: 'kurir@culineryuk.com',
+      password: hashedKurir,
+      level: 'kurir',
+    },
+  })
+  console.log('✅ Kurir:', kurir.email)
+
+  // 4. Pelanggan (di tabel pelanggan, bukan users)
+  const pelanggan = await prisma.pelanggan.upsert({
+    where: { email: 'budi@email.com' },
+    update: {
+      nama_pelanggan: 'Budi Santoso',
+      telepon: '081234567890',
+      alamat1: 'Jl. Merdeka No. 123, Jakarta',
+      password: hashedPelanggan,
+    },
+    create: {
       nama_pelanggan: 'Budi Santoso',
       email: 'budi@email.com',
-      password: hashedPasswordPelanggan,
+      password: hashedPelanggan,
       telepon: '081234567890',
-      alamat1: 'Jl. Merdeka No. 123',
-      alamat2: 'RT 01/RW 02',
-      alamat3: 'Jakarta Selatan',
+      alamat1: 'Jl. Merdeka No. 123, Jakarta',
       tgl_lahir: new Date('1990-05-15'),
     },
   })
-  console.log('✅ Pelanggan created:', pelanggan1.nama_pelanggan)
+  console.log('✅ Pelanggan:', pelanggan.email)
 
-  // 4. Buat Jenis Pembayaran
-  const transferBCA = await prisma.jenisPembayaran.create({
-    data: {
-      metode_pembayaran: 'Transfer BCA',
-    },
-  })
-  const transferMandiri = await prisma.jenisPembayaran.create({
-    data: {
-      metode_pembayaran: 'Transfer Mandiri',
-    },
-  })
-  const cod = await prisma.jenisPembayaran.create({
-    data: {
-      metode_pembayaran: 'COD (Cash on Delivery)',
-    },
-  })
+  // 5. Payment Methods (opsional, skip if exists)
+  const paymentMethods = [
+    { metode: 'Transfer BCA', no_rek: '1234567890', bank: 'Bank Central Asia' },
+    { metode: 'Transfer Mandiri', no_rek: '9876543210', bank: 'Bank Mandiri' },
+    { metode: 'COD (Cash on Delivery)', no_rek: '-', bank: '-' },
+  ]
+
+  for (const pm of paymentMethods) {
+    await prisma.jenisPembayaran.upsert({
+      where: { metode_pembayaran: pm.metode },
+      update: {},
+      create: {
+        metode_pembayaran: pm.metode,
+        detail_pembayarans: {
+          create: {
+            no_rek: pm.no_rek,
+            tempat_bayar: pm.bank,
+          }
+        }
+      }
+    })
+  }
   console.log('✅ Payment methods created')
 
-  // 5. Buat Detail Pembayaran (Rekening)
-  await prisma.detailJenisPembayaran.create({
-    data: {
-      id_jenis_pembayaran: transferBCA.id,
-      no_rek: '1234567890',
-      tempat_bayar: 'Bank Central Asia',
-      logo: '/images/bca.png',
-    },
-  })
-  await prisma.detailJenisPembayaran.create({
-    data: {
-      id_jenis_pembayaran: transferMandiri.id,
-      no_rek: '9876543210',
-      tempat_bayar: 'Bank Mandiri',
-      logo: '/images/mandiri.png',
-    },
-  })
-  console.log('✅ Payment details created')
-
-  // 6. Buat Paket Catering
-  const paket1 = await prisma.paket.create({
-    data: {
+  // 6. Sample Packages (skip if exists)
+  const packages = [
+    {
       nama_paket: 'Paket Hemat A',
-      jenis: 'Box',
-      kategori: 'Rapat',
+      jenis: 'Box' as const,
+      kategori: 'Rapat' as const,
       jumlah_pax: 50,
-      harga_paket: 1750000, // Rp 35.000/pax x 50
-      deskripsi: 'Paket hemat untuk acara rapat atau pertemuan. Includes nasi, ayam goreng, sayur, sambal, dan es teh.',
-      foto1: '/images/paket-hemat-1.jpg',
-      foto2: '/images/paket-hemat-2.jpg',
+      harga_paket: 1750000,
+      deskripsi: 'Paket hemat untuk acara rapat. Nasi, ayam goreng, sayur, sambal, es teh.',
     },
-  })
-
-  const paket2 = await prisma.paket.create({
-    data: {
+    {
       nama_paket: 'Paket Pernikahan Silver',
-      jenis: 'Prasmanan',
-      kategori: 'Pernikahan',
+      jenis: 'Prasmanan' as const,
+      kategori: 'Pernikahan' as const,
       jumlah_pax: 200,
-      harga_paket: 15000000, // Rp 75.000/pax x 200
-      deskripsi: 'Paket pernikahan lengkap dengan prasmanan. Menu: Nasi, Ayam Bakar, Ikan Gurame, Sayur, Buah, Dessert.',
-      foto1: '/images/paket-nikah-1.jpg',
-      foto2: '/images/paket-nikah-2.jpg',
-      foto3: '/images/paket-nikah-3.jpg',
+      harga_paket: 15000000,
+      deskripsi: 'Paket pernikahan lengkap dengan prasmanan premium.',
     },
-  })
+  ]
 
-  const paket3 = await prisma.paket.create({
-    data: {
-      nama_paket: 'Paket Ulang Tahun Kids',
-      jenis: 'Box',
-      kategori: 'Ulang_Tahun',
-      jumlah_pax: 30,
-      harga_paket: 900000, // Rp 30.000/pax x 30
-      deskripsi: 'Paket spesial ulang tahun anak. Nasi box dengan menu favorit anak, dilengkapi snack dan jus.',
-      foto1: '/images/paket-ultah-1.jpg',
-    },
-  })
+  for (const pkg of packages) {
+    const existingPackage = await prisma.paket.findFirst({
+      where: { nama_paket: pkg.nama_paket },
+    })
 
-  const paket4 = await prisma.paket.create({
-    data: {
-      nama_paket: 'Paket Studi Tour',
-      jenis: 'Box',
-      kategori: 'Studi_Tour',
-      jumlah_pax: 100,
-      harga_paket: 2500000, // Rp 25.000/pax x 100
-      deskripsi: 'Paket praktis untuk studi tour sekolah. Nasi box dengan lauk pauk bergizi.',
-      foto1: '/images/paket-studitour-1.jpg',
-    },
-  })
-
-  console.log('✅ Packages created:', {
-    paket1: paket1.nama_paket,
-    paket2: paket2.nama_paket,
-    paket3: paket3.nama_paket,
-    paket4: paket4.nama_paket,
-  })
-
-  // 7. Buat Contoh Pemesanan
-  const pemesanan1 = await prisma.pemesanan.create({
-    data: {
-      id_pelanggan: pelanggan1.id,
-      id_jenis_bayar: transferBCA.id,
-      no_resi: 'ORD-2026-001',
-      tgl_pesan: new Date(),
-      status_pesan: 'Menunggu_Konfirmasi',
-      total_bayar: 1750000,
-      detail: {
-        create: {
-          id_paket: paket1.id,
-          subtotal: 1750000,
-        },
-      },
-    },
-  })
-  console.log('✅ Order created:', pemesanan1.no_resi)
+    if (!existingPackage) {
+      await prisma.paket.create({
+        data: pkg,
+      })
+    }
+  }
+  console.log('✅ Packages created')
 
   console.log('\n🎉 Seeding completed successfully!')
-  console.log('\n📊 Summary:')
-  console.log('  - 1 Admin user')
-  console.log('  - 1 Pelanggan')
-  console.log('  - 3 Payment methods')
-  console.log('  - 4 Catering packages')
-  console.log('  - 1 Sample order')
+  console.log('\n📋 Test Accounts:')
+  console.log('  Admin:    admin@culineryuk.com / admin123')
+  console.log('  Owner:    owner@culineryuk.com / owner123')
+  console.log('  Kurir:    kurir@culineryuk.com / kurir123')
+  console.log('  Pelanggan: budi@email.com / user123')
 }
 
 main()

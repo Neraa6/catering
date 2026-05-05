@@ -2,26 +2,21 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-// ✅ Helper function untuk convert BigInt ke string
-function serializeBigInt(obj: any): any {
+// ✅ Helper: Convert BigInt & Date ke format JSON-safe
+function serializeBigInt(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
-  
-  if (typeof obj === "bigint") {
-    return obj.toString();
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(serializeBigInt);
-  }
-  
+  if (typeof obj === "bigint") return obj.toString();
+  if (obj instanceof Date) return obj.toISOString();
+  if (Array.isArray(obj)) return obj.map(serializeBigInt);
   if (typeof obj === "object") {
-    const result: any = {};
+    const result: Record<string, unknown> = {};
     for (const key in obj) {
-      result[key] = serializeBigInt(obj[key]);
+      if (obj.hasOwnProperty(key)) {
+        result[key] = serializeBigInt((obj as Record<string, unknown>)[key]);
+      }
     }
     return result;
   }
-  
   return obj;
 }
 
@@ -29,28 +24,26 @@ export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
 
-    // Check for admin/user in users table
-    let user = await prisma.user.findUnique({
-      where: { email },
-    });
+    // 1. Cek di tabel users (admin/owner/kurir)
+    let user = await prisma.user.findUnique({ where: { email } });
 
-    // If not found, check pelanggan table
+    // 2. Jika tidak ada, cek di tabel pelanggan
     if (!user) {
-      const pelanggan = await prisma.pelanggan.findUnique({
-        where: { email },
-      });
+      const pelanggan = await prisma.pelanggan.findUnique({ where: { email } });
 
       if (pelanggan) {
+        // ⚠️ PENTING: Konversi id ke string manual di sini
         user = {
-          id: pelanggan.id, // Masih BigInt, nanti di-serialize
+          id: pelanggan.id.toString(), // ✅ String, bukan BigInt
           name: pelanggan.nama_pelanggan,
           email: pelanggan.email,
           password: pelanggan.password,
-          level: "pelanggan" as const,
+          level: "pelanggan" as const, // ✅ Field level wajib ada
         };
       }
     }
 
+    // 3. User tidak ditemukan
     if (!user) {
       return NextResponse.json(
         { error: "Email atau password salah" },
@@ -58,7 +51,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify password
+    // 4. Verifikasi password
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
@@ -68,13 +61,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // ✅ Hapus password DAN serialize BigInt sebelum response
+    // 5. Hapus password & serialize data
     const { password: _, ...userWithoutPassword } = user;
     const serializedUser = serializeBigInt(userWithoutPassword);
 
+    // ✅ Response sukses dengan field 'level' yang jelas
     return NextResponse.json({
       success: true,
-      user: serializedUser,
+      user: serializedUser, // Akan mengandung: { id, name, email, level }
     });
   } catch (error) {
     console.error("Login error:", error);

@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      setLoading(true);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,9 +54,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (response.ok) {
+        // 1. Simpan user ke state & localStorage
         setUser(data.user);
         localStorage.setItem("culiner-user", JSON.stringify(data.user));
-        router.push("/");
+        
+        // 2. ✅ ROLE-BASED REDIRECT LOGIC
+        const userLevel = data.user.level;
+        
+        if (userLevel === "kurir") {
+          router.push("/kurir");
+        } else if (userLevel === "admin" || userLevel === "owner") {
+          router.push("/admin");
+        } else {
+          // pelanggan atau default
+          router.push("/");
+        }
+        
         return true;
       } else {
         alert(data.error || "Login gagal");
@@ -65,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Login error:", error);
       alert("Terjadi kesalahan saat login");
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 

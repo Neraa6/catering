@@ -60,6 +60,45 @@
   .text-muted, .text-gray-500, .text-gray-400 { 
     @apply !text-brown-700; 
   }
+  /* Responsive utilities */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Touch-friendly buttons on mobile */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 44px;
+  }
+  
+  input, select, textarea {
+    min-height: 44px;
+  }
+}
+
+/* Prevent horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* Responsive tables */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Card spacing on mobile */
+@media (max-width: 640px) {
+  .card-mobile {
+    @apply rounded-lg shadow-sm border border-brown-200;
+  }
+}
 }
 
 /* Custom Scrollbar */
