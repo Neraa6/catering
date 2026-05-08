@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 
+// ... (import tetap sama)
+
 export default function SettingsPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,10 +18,33 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("payments");
 
   useEffect(() => {
-    fetch("/api/admin/settings/payments")
-      .then(r => r.json())
-      .then(data => { setPayments(data); setLoading(false); });
+    const fetchPayments = async () => {
+      try {
+        const response = await fetch("/api/admin/settings/payments");
+        
+        if (!response.ok) {
+          throw new Error("Gagal mengambil data pembayaran");
+        }
+
+        // ✅ Cek apakah response benar-benar JSON sebelum di-parse
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          setPayments(data);
+        } else {
+          console.error("API tidak mengembalikan JSON");
+        }
+      } catch (error) {
+        console.error("Error loading settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPayments();
   }, []);
+
+  // ... (rest of the component sama)
 
   const handleAddPayment = async () => {
     await fetch("/api/admin/settings/payments", {
@@ -73,18 +98,41 @@ export default function SettingsPage() {
           </Card>
 
           <div className="space-y-3">
-            {loading ? <p>Loading...</p> : payments.map(p => (
-              <div key={p.id} className="flex items-center justify-between p-4 bg-white border border-brown-200 rounded-lg">
-                <div>
-                  <p className="font-semibold text-brown-900">{p.metode_pembayaran}</p>
-                  <p className="text-sm text-brown-600">{p.tempat_bayar} • {p.detail_jenis_pembayarans[0]?.no_rek || "-"}</p>
-                </div>
-                <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(p.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+  {loading ? (
+    <p className="text-center text-brown-500 py-4">Loading...</p>
+  ) : payments.length === 0 ? (
+    <p className="text-center text-brown-400 py-4">Belum ada metode pembayaran.</p>
+  ) : (
+    payments.map((p) => {
+      // ✅ Safe access: cek array dulu sebelum akses index [0]
+      const firstDetail = Array.isArray(p.detail_pembayarans) && p.detail_pembayarans.length > 0 
+        ? p.detail_pembayarans[0] 
+        : null;
+      
+      // Note: field name di Prisma adalah 'detail_pembayarans' (plural), bukan 'detail_jenis_pembayarans'
+      
+      return (
+        <div key={p.id} className="flex items-center justify-between p-4 bg-white border border-brown-200 rounded-lg">
+          <div>
+            <p className="font-semibold text-brown-900">{p.metode_pembayaran}</p>
+            <p className="text-sm text-brown-600">
+              {p.detail_pembayarans?.[0]?.tempat_bayar || "-"} • {" "}
+              {firstDetail?.no_rek || "-"}
+            </p>
           </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+            onClick={() => handleDelete(p.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      );
+    })
+  )}
+</div>
         </TabsContent>
 
         <TabsContent value="general" className="mt-6">

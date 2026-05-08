@@ -13,6 +13,7 @@ enum StatusPesan {
   Menunggu_Konfirmasi
   Sedang_Diproses
   Menunggu_Kurir
+  Selesai
 }
 
 enum StatusKirim {
@@ -125,7 +126,7 @@ model Pemesanan {
   id            BigInt       @id @default(autoincrement())
   id_pelanggan  BigInt
   id_jenis_bayar BigInt
-  no_resi       String?      @db.VarChar(30)
+  no_resi       String?      @db.VarChar(30)@unique
   tgl_pesan     DateTime     @default(now()) @db.DateTime
   status_pesan  StatusPesan  @default(Menunggu_Konfirmasi)
   total_bayar   BigInt

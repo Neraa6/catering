@@ -2,25 +2,27 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const payments = await prisma.jenisPembayaran.findMany({
-    include: { detail_pembayarans: true },
-    orderBy: { created_at: "desc" }
-  });
-  return NextResponse.json(payments.map(p => ({ ...p, id: p.id.toString() })));
-}
+  try {
+    const payments = await prisma.jenisPembayaran.findMany({
+      include: { detail_pembayarans: true },
+      orderBy: { created_at: "desc" },
+    });
 
-export async function POST(req: Request) {
-  const body = await req.json();
-  const payment = await prisma.jenisPembayaran.create({
-    data: {
-      metode_pembayaran: body.metode_pembayaran,
-      detail_pembayarans: {
-        create: {
-          no_rek: body.no_rek,
-          tempat_bayar: body.tempat_bayar,
-        }
-      }
-    }
-  });
-  return NextResponse.json({ ...payment, id: payment.id.toString() });
+    // ✅ Serialize BigInt ke string
+    const serialized = payments.map((p: any) => ({
+      ...p,
+      id: p.id.toString(),
+      detail_pembayarans: p.detail_pembayarans.map((d: any) => ({
+        ...d,
+        id: d.id.toString(),
+        id_jenis_pembayaran: d.id_jenis_pembayaran.toString(),
+      })),
+    }));
+
+    return NextResponse.json(serialized);
+  } catch (error) {
+    console.error("❌ Error fetching payments:", error);
+    // ✅ Return array kosong jika error, biar frontend tidak crash
+    return NextResponse.json([], { status: 500 });
+  }
 }

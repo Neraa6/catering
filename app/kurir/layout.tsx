@@ -49,7 +49,7 @@ export default function KurirLayout({ children }: { children: React.ReactNode })
           <User className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <h1 className="font-serif font-bold text-base truncate">Kurir Panel</h1>
+          <h1 className="font-serif font-bold text-base truncate text-white">Kurir Panel</h1>
           <p className="text-xs text-brown-300 truncate">{user.name}</p>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function KurirLayout({ children }: { children: React.ReactNode })
               )}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate text-white">{item.label}</span>
             </button>
           );
         })}
