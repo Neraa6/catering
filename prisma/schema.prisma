@@ -3,11 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  directUrl  = env("DIRECT_URL")  // ✅ Wajib untuk migration di PostgreSQL
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
-
 // --- ENUMS ---
 
 enum StatusPesan {
