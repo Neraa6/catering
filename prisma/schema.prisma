@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql" // Bisa diganti "mysql" jika Anda pakai MySQL
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")  // ✅ Wajib untuk migration di PostgreSQL
 }
 
 // --- ENUMS ---
@@ -108,8 +109,8 @@ model Paket {
   nama_paket   String        @db.VarChar(50)
   jenis        JenisPaket
   kategori     KategoriPaket
-  jumlah_pax   Int           
-  harga_paket  Int           
+  jumlah_pax   Int           // ✅ PostgreSQL auto-detect, tidak perlu @db.Integer
+  harga_paket  Int           // ✅ PostgreSQL auto-detect
   deskripsi    String?       @db.Text
   foto1        String?       @db.VarChar(255)
   foto2        String?       @db.VarChar(255)
@@ -126,8 +127,8 @@ model Pemesanan {
   id            BigInt       @id @default(autoincrement())
   id_pelanggan  BigInt
   id_jenis_bayar BigInt
-  no_resi       String?      @db.VarChar(30)@unique
-  tgl_pesan     DateTime     @default(now()) @db.DateTime
+  no_resi       String?      @db.VarChar(30) @unique  // ✅ Spasi diperbaiki
+  tgl_pesan     DateTime     @default(now()) @db.Timestamp(3) // ✅ Lebih presisi di Postgres
   status_pesan  StatusPesan  @default(Menunggu_Konfirmasi)
   total_bayar   BigInt
   created_at    DateTime     @default(now())
@@ -153,15 +154,15 @@ model DetailPemesanan {
   pemesanan Pemesanan @relation(fields: [id_pemesanan], references: [id])
   paket     Paket     @relation(fields: [id_paket], references: [id])
 
-  @@id([id_pemesanan, id_paket])
+  @@id([id_pemesanan, id_paket])  // ✅ Composite key tetap sama
   @@index([id_paket])
   @@map("detail_pemesanans")
 }
 
 model Pengiriman {
   id           BigInt       @id @default(autoincrement())
-  tgl_kirim    DateTime?    @db.DateTime
-  tgl_terima   DateTime?    @db.DateTime
+  tgl_kirim    DateTime?    @db.Timestamp(3)
+  tgl_terima   DateTime?    @db.Timestamp(3)
   status_kirim StatusKirim  @default(Sedang_Dikirim)
   bukti_foto   String?      @db.VarChar(255)
   id_pesan     BigInt       @unique
