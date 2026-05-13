@@ -30,13 +30,32 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 
+// ✅ 1. DEFINISIKAN INTERFACE Package DI SINI
+interface Package {
+  id: string;
+  nama_paket: string;
+  jenis: "Box" | "Prasmanan";
+  kategori: "Pernikahan" | "Selamatan" | "Ulang_Tahun" | "Studi_Tour" | "Rapat";
+  jumlah_pax: number;
+  harga_paket: number;
+  deskripsi?: string;
+  foto1?: string;
+  foto2?: string;
+  foto3?: string;
+}
+
+// ✅ 2. Interface untuk form (tanpa id karena form tidak butuh id)
+type PackageForm = Omit<Package, "id">;
+
 export default function PackagesPage() {
-  const [packages, setPackages] = useState<any[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({
+  
+  // ✅ 3. Gunakan type PackageForm untuk form
+  const [form, setForm] = useState<PackageForm>({
     nama_paket: "",
     jenis: "Box",
     kategori: "Rapat",
@@ -49,7 +68,6 @@ export default function PackagesPage() {
     fetchPackages();
   }, []);
 
-  // ✅ FIX: Safe fetch dengan validasi & finally block
   const fetchPackages = async () => {
     try {
       const res = await fetch("/api/admin/packages");
@@ -67,7 +85,7 @@ export default function PackagesPage() {
       console.error("❌ Fetch packages error:", err);
       setPackages([]);
     } finally {
-      setLoading(false); // ✅ Selalu reset loading state
+      setLoading(false);
     }
   };
 
@@ -93,25 +111,27 @@ export default function PackagesPage() {
       setDialogOpen(false);
       setEditingId(null);
       fetchPackages();
-    } catch (err: any) {
-      alert("❌ Error: " + err.message);
+    } catch (err: unknown) {
+      // ✅ 4. Ganti `any` jadi `unknown` + type guard
+      const message = err instanceof Error ? err.message : "Terjadi kesalahan";
+      alert("❌ Error: " + message);
     }
   };
 
-  const handleEdit = (pkg: any) => {
+  // ✅ 5. Ganti `pkg: any` jadi `pkg: Package`
+  const handleEdit = (pkg: Package) => {
     setEditingId(pkg.id);
     setForm({
       nama_paket: pkg.nama_paket,
       jenis: pkg.jenis,
       kategori: pkg.kategori,
       jumlah_pax: pkg.jumlah_pax,
-      harga_paket: Number(pkg.harga_paket),
+      harga_paket: pkg.harga_paket,
       deskripsi: pkg.deskripsi || "",
     });
     setDialogOpen(true);
   };
 
-  // ✅ FIX: Delete dengan error handling
   const handleDelete = async (id: string) => {
     if (!confirm("Yakin hapus paket ini?")) return;
     
@@ -119,8 +139,9 @@ export default function PackagesPage() {
       const res = await fetch(`/api/admin/packages/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal menghapus paket");
       fetchPackages();
-    } catch (err: any) {
-      alert("❌ Error: " + err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Terjadi kesalahan";
+      alert("❌ Error: " + message);
     }
   };
 
@@ -202,7 +223,6 @@ export default function PackagesPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit Paket" : "Tambah Paket Baru"}</DialogTitle>
-            {/* ✅ FIX: Tambah DialogDescription untuk hilangkan warning shadcn */}
             <DialogDescription className="sr-only">
               Form untuk {editingId ? "mengedit" : "menambahkan"} paket catering
             </DialogDescription>
@@ -216,7 +236,7 @@ export default function PackagesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Jenis</Label>
-                <Select value={form.jenis} onValueChange={v => setForm({...form, jenis: v})}>
+                <Select value={form.jenis} onValueChange={v => setForm({...form, jenis: v as Package["jenis"]})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Box">Box</SelectItem>
@@ -229,7 +249,7 @@ export default function PackagesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Kategori</Label>
-                <Select value={form.kategori} onValueChange={v => setForm({...form, kategori: v})}>
+                <Select value={form.kategori} onValueChange={v => setForm({...form, kategori: v as Package["kategori"]})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {["Pernikahan", "Selamatan", "Ulang_Tahun", "Studi_Tour", "Rapat"].map(k => (
