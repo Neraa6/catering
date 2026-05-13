@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import type { Config } from "tailwindcss";
 
-export default {
-  darkMode: false, // Matikan dulu biar nggak conflict
+export default {// Matikan dulu biar nggak conflict
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
