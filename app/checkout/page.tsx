@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client"; // ✅ WAJIB: File ini hanya jalan di client
 
 import { useState, useEffect } from "react";

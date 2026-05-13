@@ -12,9 +12,7 @@ import {
   Settings,
   LogOut,
   Menu,
-  UtensilsCrossed,
-  BarChart3
-} from "lucide-react";
+  UtensilsCrossed} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";

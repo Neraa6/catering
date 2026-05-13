@@ -9,13 +9,13 @@ export async function GET() {
     });
 
     // ✅ Serialize BigInt ke string
-    const serialized = payments.map((p: any) => ({
-      ...p,
-      id: p.id.toString(),
-      detail_pembayarans: p.detail_pembayarans.map((d: any) => ({
-        ...d,
-        id: d.id.toString(),
-        id_jenis_pembayaran: d.id_jenis_pembayaran.toString(),
+    const serialized = payments.map((p: unknown) => ({
+      ...(p as Record<string, unknown>),
+      id: (p as { id: bigint }).id.toString(),
+      detail_pembayarans: (p as { detail_pembayarans: unknown[] }).detail_pembayarans.map((d: unknown) => ({
+        ...(d as Record<string, unknown>),
+        id: (d as { id: bigint }).id.toString(),
+        id_jenis_pembayaran: (d as { id_jenis_pembayaran: bigint }).id_jenis_pembayaran.toString(),
       })),
     }));
 

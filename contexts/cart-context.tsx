@@ -12,7 +12,7 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (paket: any) => void;
+  addToCart: (paket: unknown) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -46,12 +46,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items]);
 
-  const addToCart = (paket: any) => {
+  const addToCart = (paket: unknown) => {
     setItems((prev) => {
-      const existing = prev.find((item) => item.id === paket.id.toString());
+      const existing = prev.find((item) => item.id === (paket as { id: string }).id.toString());
       if (existing) {
         return prev.map((item) =>
-          item.id === paket.id.toString()
+          item.id === (paket as { id: string }).id.toString()
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -59,10 +59,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [
         ...prev,
         {
-          id: paket.id.toString(),
-          nama_paket: paket.nama_paket,
-          harga_paket: Number(paket.harga_paket),
-          jumlah_pax: paket.jumlah_pax,
+          id: (paket as { id: string }).id.toString(),
+          nama_paket: (paket as { nama_paket: string }).nama_paket,
+          harga_paket: Number((paket as { harga_paket: string }).harga_paket),
+          jumlah_pax: (paket as { jumlah_pax: number }).jumlah_pax,
           quantity: 1,
         },
       ];

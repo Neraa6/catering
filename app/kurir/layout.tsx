@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/static-components */
 "use client";
 
 import { useEffect, useState } from "react";

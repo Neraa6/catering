@@ -2,17 +2,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // ✅ Helper: Serialize BigInt ke string agar bisa di-JSON
-function serializeBigInt(obj: any): any {
+function serializeBigInt(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === "bigint") return obj.toString();
   if (obj instanceof Date) return obj.toISOString();
   if (Array.isArray(obj)) return obj.map(serializeBigInt);
   if (typeof obj === "object") {
-    const result: any = {};
-    for (const key in obj) {
-      result[key] = serializeBigInt(obj[key]);
+    const res: Record<string, unknown> = {};
+    for (const k in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, k)) {
+        res[k] = serializeBigInt((obj as Record<string, unknown>)[k]);
+      }
     }
-    return result;
+    return res;
   }
   return obj;
 }

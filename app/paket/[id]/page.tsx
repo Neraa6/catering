@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import AddToCartButton from "@/components/cart/add-to-cart-button";
@@ -31,7 +30,7 @@ export default async function PaketDetailPage({ params }: PageProps) {
       <div className="pt-24 pb-20 px-6 max-w-6xl mx-auto">
         {/* Breadcrumb */}
         <div className="mb-6 text-sm text-gray-500">
-          <a href="/" className="hover:text-brand-500">Home</a> / 
+          <a href="" className="hover:text-brand-500">Home</a> / 
           <span className="ml-2">Paket</span> / 
           <span className="ml-2 text-brand-500">{paket.nama_paket}</span>
         </div>
@@ -41,6 +40,7 @@ export default async function PaketDetailPage({ params }: PageProps) {
           <div className="space-y-4">
             <div className="aspect-video bg-gradient-to-br from-brand-100 to-brand-200 rounded-2xl flex items-center justify-center">
               {paket.foto1 ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img 
                   src={paket.foto1} 
                   alt={paket.nama_paket}

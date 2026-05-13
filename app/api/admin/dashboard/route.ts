@@ -66,13 +66,13 @@ export async function GET() {
       },
       recentOrders,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 🔴 INI AKAN MUNCUL DI TERMINAL SERVER KAMU
-    console.error("❌ [Dashboard API] FAILED:", error.message);
-    console.error("📜 Stack:", error.stack?.split("\n").slice(0, 3).join("\n"));
-    
+    console.error("❌ [Dashboard API] FAILED:", (error as Error).message);
+    console.error("📜 Stack:", (error as Error).stack?.split("\n").slice(0, 3).join("\n"));
+
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: (error as Error).message || "Internal Server Error" },
       { status: 500 }
     );
   }

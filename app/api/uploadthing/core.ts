@@ -5,7 +5,7 @@ const f = createUploadthing();
 
 export const ourFileRouter = {
   // ✅ Upload bukti bayar (max 5MB, hanya image)
-  buktiPembayaran: f({ image: { maxFileSize: "5MB", maxFileCount: 1 } })
+  buktiPembayaran: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
     .middleware(async () => {
       // TODO: Tambah auth check nanti
       return { userId: "anon" };
@@ -15,7 +15,7 @@ export const ourFileRouter = {
     }),
 
   // ✅ Upload foto paket (max 10MB, multi image)
-  fotoPaket: f({ image: { maxFileSize: "10MB", maxFileCount: 3 } })
+  fotoPaket: f({ image: { maxFileSize: "16MB", maxFileCount: 3 } })
     .middleware(async () => {
       return { userId: "admin" };
     })

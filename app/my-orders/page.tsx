@@ -5,13 +5,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Package, Clock, CheckCircle, Truck, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+const statusConfig: Record<string, { label: string; color: string; icon: unknown }> = {
   Menunggu_Konfirmasi: { label: "Menunggu Konfirmasi", color: "bg-yellow-100 text-yellow-800", icon: Clock },
   Sedang_Diproses: { label: "Sedang Diproses", color: "bg-blue-100 text-blue-800", icon: Package },
   Menunggu_Kurir: { label: "Menunggu Kurir", color: "bg-purple-100 text-purple-800", icon: Truck },
@@ -22,7 +22,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 export default function MyOrdersPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<unknown[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -154,18 +154,18 @@ export default function MyOrdersPage() {
         ) : (
           <div className="space-y-4">
             {/* ✅ SAFE MAP: orders sudah dipastikan array */}
-            {orders.map((order) => {
-              const status = statusConfig[order.status_pesan] || statusConfig.Menunggu_Konfirmasi;
-              const StatusIcon = status.icon;
-              
+            { (orders as unknown[]).map((order: unknown) => {
+              const status = statusConfig[(order as { status_pesan: string }).status_pesan] || statusConfig.Menunggu_Konfirmasi;
+              const StatusIcon = status.icon as React.ElementType; // Type assertion untuk icon dinamis
+
               return (
-                <Card key={order.id} className="border-brown-200 hover:shadow-md transition-shadow">
+                <Card key={(order as { id: string }).id} className="border-brown-200 hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-brown-900">
-                            {order.no_resi || `#${order.id}`}
+                            { (order as { no_resi: string }).no_resi || `#${(order as { id: string }).id}` }
                           </span>
                           <Badge className={status.color}>
                             <StatusIcon className="h-3 w-3 mr-1" />
@@ -173,7 +173,7 @@ export default function MyOrdersPage() {
                           </Badge>
                         </div>
                         <p className="text-sm text-brown-600">
-                          {new Date(order.tgl_pesan).toLocaleDateString("id-ID", {
+                          {new Date((order as { tgl_pesan: string }).tgl_pesan).toLocaleDateString("id-ID", {
                             weekday: "long",
                             year: "numeric",
                             month: "long",
@@ -183,10 +183,10 @@ export default function MyOrdersPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-brown-700">
-                          Rp {Number(order.total_bayar).toLocaleString("id-ID")}
+                          Rp {Number((order as { total_bayar: number }).total_bayar).toLocaleString("id-ID")}
                         </p>
                         <p className="text-xs text-brown-500">
-                          {order.detail?.length || 0} item
+                          { (order as { detail: unknown[] }).detail?.length || 0 } item
                         </p>
                       </div>
                     </div>
@@ -194,17 +194,17 @@ export default function MyOrdersPage() {
                   <CardContent className="pt-0">
                     {/* Order Items Preview */}
                     <div className="space-y-2 mb-4">
-                      {order.detail?.slice(0, 2).map((item: any, idx: number) => (
+                      { (order as { detail: unknown[] }).detail?.slice(0, 2).map((item: unknown, idx: number) => (
                         <div key={idx} className="flex items-center justify-between text-sm">
-                          <span className="text-brown-700">{item.paket?.nama_paket}</span>
+                          <span className="text-brown-700">{(item as { paket?: { nama_paket: string } }).paket?.nama_paket}</span>
                           <span className="text-brown-500">
-                            {item.quantity}x • Rp {Number(item.subtotal).toLocaleString("id-ID")}
+                            {(item as { quantity: number }).quantity}x • Rp {(item as { subtotal: number }).subtotal?.toLocaleString("id-ID")}
                           </span>
                         </div>
                       ))}
-                      {order.detail?.length > 2 && (
+                      { (order as { detail: unknown[] }).detail?.length > 2 && (
                         <p className="text-xs text-brown-500 italic">
-                          +{order.detail.length - 2} item lainnya
+                          +{(order as { detail: unknown[] }).detail.length - 2} item lainnya
                         </p>
                       )}
                     </div>
@@ -214,14 +214,14 @@ export default function MyOrdersPage() {
                       <Button variant="outline" size="sm" className="border-brown-200">
                         Lihat Detail
                       </Button>
-                      {order.status_pesan === "Menunggu_Konfirmasi" && (
+                      { (order as { status_pesan: string }).status_pesan === "Menunggu_Konfirmasi" && (
                         <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
                           Batalkan Pesanan
                         </Button>
                       )}
-                      {order.bukti_pembayaran && (
+                      { (order as { bukti_pembayaran: string }).bukti_pembayaran && (
                         <a 
-                          href={order.bukti_pembayaran} 
+                          href={ (order as { bukti_pembayaran: string }).bukti_pembayaran } 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-sm text-brown-500 hover:text-brown-700 underline"

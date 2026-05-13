@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Truck, CheckCircle, Clock, Package } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 export default function KurirDashboard() {
   const [stats, setStats] = useState({ pending: 0, delivering: 0, completed: 0 });

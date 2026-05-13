@@ -11,7 +11,7 @@ function generateNoResi(): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { pelanggan, items, id_jenis_bayar, total_bayar, tanggal_acara, catatan } = body;
+    const { pelanggan, items, id_jenis_bayar, total_bayar } = body;
 
     // 1. Cari atau Buat Pelanggan
     let idPelanggan: bigint;
@@ -55,10 +55,10 @@ export async function POST(request: Request) {
           status_pesan: "Menunggu_Konfirmasi",
           total_bayar: BigInt(total_bayar),
           detail: {
-            create: items.map((item: any) => ({
-              id_paket: BigInt(item.id_paket),
+            create: items.map((item: unknown) => ({
+              id_paket: BigInt((item as { id_paket: string }).id_paket),
               // ✅ quantity DIHAPUS karena tidak ada di PDM
-              subtotal: BigInt(item.subtotal),
+              subtotal: BigInt((item as { subtotal: string }).subtotal),
             })),
           },
         },
@@ -82,10 +82,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
 
-  } catch (error: any) {
-    console.error("🔥 ORDER ERROR:", error.message);
+  } catch (error) {
+    console.error("Error fetching kurir stats:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Gagal memproses pesanan" },
+      { error: "Failed to fetch statistics", success: false },
       { status: 500 }
     );
   }

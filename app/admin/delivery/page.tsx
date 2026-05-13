@@ -11,13 +11,40 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
-import { Calendar, Truck, CheckCircle, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+interface Pelanggan {
+  id: string;
+  nama_pelanggan: string;
+  email: string;
+  telepon: string;
+  alamat1: string;
+  alamat2?: string;
+  alamat3?: string;
+}
+
+interface Pemesanan {
+  id: string;
+  no_resi: string;
+  pelanggan: Pelanggan;
+  // tambahkan field lain jika perlu
+}
+
+interface Delivery {
+  no_resi: string;
+  id: string;
+  status_kirim: string;
+  tgl_kirim?: Date | string;
+  tgl_terima?: Date | string;
+  bukti_foto?: string;
+  pemesanan?: Pemesanan;
+  id_pesan: string;
+}
 
 export default function DeliveryPage() {
-  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<any>(null);
+  const [selected, setSelected] = useState<Delivery | null>(null);
   const [form, setForm] = useState({ tgl_kirim: "", tgl_terima: "", status_kirim: "Sedang_Dikirim" });
 
   useEffect(() => {
@@ -57,7 +84,7 @@ export default function DeliveryPage() {
     fetchDeliveries();
   }, []);
 
-  const openEdit = (d: any) => {
+  const openEdit = (d: Delivery) => {
     setSelected(d);
     setForm({
       tgl_kirim: d.tgl_kirim ? new Date(d.tgl_kirim).toISOString().split('T')[0] : "",
@@ -99,9 +126,9 @@ const handleUpdate = async () => {
     alert("✅ Status berhasil diupdate!");
     setSelected(null);
     window.location.reload();
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Update failed:", err);
-    alert("Gagal update: " + err.message);
+    alert("Gagal update: " + (err as Error).message);
   }
 };
   const statusColors: Record<string, string> = {
@@ -160,9 +187,9 @@ const handleUpdate = async () => {
               deliveries.map((d) => (
                 <TableRow key={d.id}>
                   <TableCell className="font-medium">
-                    {d.pemesanan?.no_resi || `#${d.pemesanan?.id}`}
+                    {d.no_resi || `#${d.pemesanan?.id}`}
                   </TableCell>
-                  <TableCell>{d.pemesanan?.pelanggan?.nama_pelanggan}</TableCell>
+                  <TableCell>{d.pemesanan?.pelanggan?.nama_pelanggan || "-"}</TableCell>
                   <TableCell>
                     {d.tgl_kirim ? new Date(d.tgl_kirim).toLocaleDateString("id-ID") : "-"}
                   </TableCell>

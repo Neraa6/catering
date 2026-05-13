@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // ✅ Helper: Konversi BigInt & Date ke format aman
-function safeSerialize(obj: any): any {
+function safeSerialize(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === "bigint") return obj.toString();
   if (obj instanceof Date) return obj.toISOString();
   if (Array.isArray(obj)) return obj.map(safeSerialize);
 
   if (typeof obj === "object") {
-    const res: any = {};
+    const res: Record<string, unknown> = {};
 
     for (const k in obj) {
-      res[k] = safeSerialize(obj[k]);
+      if (Object.prototype.hasOwnProperty.call(obj, k)) {
+        res[k] = safeSerialize((obj as Record<string, unknown>)[k]);
+      }
     }
 
     return res;
@@ -52,7 +54,7 @@ export async function PUT(
       safeSerialize(updated)
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(
       "Error updating delivery:",
       error
@@ -61,7 +63,7 @@ export async function PUT(
     return NextResponse.json(
       {
         error: "Failed to update delivery",
-        details: error.message,
+        details: (error as Error).message,
       },
       { status: 500 }
     );
