@@ -1,79 +1,126 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 // ✅ Helper: Convert BigInt & Date ke format JSON-safe
 function serializeBigInt(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
-  if (typeof obj === "bigint") return obj.toString();
-  if (obj instanceof Date) return obj.toISOString();
-  if (Array.isArray(obj)) return obj.map(serializeBigInt);
+
+  if (typeof obj === "bigint") {
+    return obj.toString();
+  }
+
+  if (obj instanceof Date) {
+    return obj.toISOString();
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(serializeBigInt);
+  }
+
   if (typeof obj === "object") {
     const result: Record<string, unknown> = {};
+
     for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        result[key] = serializeBigInt((obj as Record<string, unknown>)[key]);
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        result[key] = serializeBigInt(
+          (obj as Record<string, unknown>)[key]
+        );
       }
     }
+
     return result;
   }
+
   return obj;
 }
 
-export async function POST(request: Request) {
+type LoginUser = {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  level: string;
+};
+
+export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    // 1. Cek di tabel users (admin/owner/kurir)
-    let user = await prisma.user.findUnique({ where: { email } });
+    let user: LoginUser | null = null;
 
-    // 2. Jika tidak ada, cek di tabel pelanggan
+    // ✅ Cari admin/owner/kurir
+    const adminUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (adminUser) {
+      user = {
+        id: adminUser.id.toString(),
+        name: adminUser.name,
+        email: adminUser.email,
+        password: adminUser.password,
+        level: adminUser.level,
+      };
+    }
+
+    // ✅ Kalau tidak ada → cari pelanggan
     if (!user) {
-      const pelanggan = await prisma.pelanggan.findUnique({ where: { email } });
+      const pelanggan = await prisma.pelanggan.findUnique({
+        where: { email },
+      });
 
       if (pelanggan) {
-        // ⚠️ PENTING: Konversi id ke string manual di sini
         user = {
-  id: pelanggan.id.toString(),
-  name: pelanggan.nama_pelanggan,
-  email: pelanggan.email,
-  password: pelanggan.password,
-  level: "pelanggan" as const,
-} as any; 
+          id: pelanggan.id.toString(),
+          name: pelanggan.nama_pelanggan,
+          email: pelanggan.email,
+          password: pelanggan.password,
+          level: "pelanggan",
+        };
       }
     }
 
-    // 3. User tidak ditemukan
+    // ❌ User tidak ditemukan
     if (!user) {
       return NextResponse.json(
-        { error: "Email atau password salah" },
+        {
+          error: "Email atau password salah",
+        },
         { status: 401 }
       );
     }
 
-    // 4. Verifikasi password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // ✅ Verifikasi password
+    const isValidPassword = await bcrypt.compare(
+      password,
+      user.password
+    );
 
     if (!isValidPassword) {
       return NextResponse.json(
-        { error: "Email atau password salah" },
+        {
+          error: "Email atau password salah",
+        },
         { status: 401 }
       );
     }
 
-    // 5. Hapus password & serialize data
+    // ✅ Hapus password
     const { password: _, ...userWithoutPassword } = user;
-    const serializedUser = serializeBigInt(userWithoutPassword);
 
-    // ✅ Response sukses dengan field 'level' yang jelas
     return NextResponse.json({
       success: true,
-      user: serializedUser, // Akan mengandung: { id, name, email, level }
+      user: serializeBigInt(userWithoutPassword),
     });
+
   } catch (error) {
     console.error("Login error:", error);
+
     return NextResponse.json(
-      { error: "Terjadi kesalahan saat login" },
+      {
+        error: "Terjadi kesalahan saat login",
+      },
       { status: 500 }
     );
   }
