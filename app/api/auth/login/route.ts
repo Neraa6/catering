@@ -34,12 +34,12 @@ export async function POST(request: Request) {
       if (pelanggan) {
         // ⚠️ PENTING: Konversi id ke string manual di sini
         user = {
-          id: pelanggan.id.toString(), // ✅ String, bukan BigInt
-          name: pelanggan.nama_pelanggan,
-          email: pelanggan.email,
-          password: pelanggan.password,
-          level: "pelanggan" as const, // ✅ Field level wajib ada
-        };
+  id: pelanggan.id.toString(),
+  name: pelanggan.nama_pelanggan,
+  email: pelanggan.email,
+  password: pelanggan.password,
+  level: "pelanggan" as const,
+} as any; 
       }
     }
 

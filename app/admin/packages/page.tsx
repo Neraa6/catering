@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -44,13 +45,30 @@ export default function PackagesPage() {
     deskripsi: "",
   });
 
-  useEffect(() => { fetchPackages(); }, []);
+  useEffect(() => {
+    fetchPackages();
+  }, []);
 
+  // ✅ FIX: Safe fetch dengan validasi & finally block
   const fetchPackages = async () => {
-    const res = await fetch("/api/admin/packages");
-    const data = await res.json();
-    setPackages(data);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/packages");
+      
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      
+      const contentType = res.headers.get("content-type");
+      if (!contentType?.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
+      }
+
+      const data = await res.json();
+      setPackages(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Fetch packages error:", err);
+      setPackages([]);
+    } finally {
+      setLoading(false); // ✅ Selalu reset loading state
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,15 +78,24 @@ export default function PackagesPage() {
       : "/api/admin/packages";
     const method = editingId ? "PUT" : "POST";
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
 
-    setDialogOpen(false);
-    setEditingId(null);
-    fetchPackages();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Gagal menyimpan paket");
+      }
+
+      setDialogOpen(false);
+      setEditingId(null);
+      fetchPackages();
+    } catch (err: any) {
+      alert("❌ Error: " + err.message);
+    }
   };
 
   const handleEdit = (pkg: any) => {
@@ -84,10 +111,17 @@ export default function PackagesPage() {
     setDialogOpen(true);
   };
 
+  // ✅ FIX: Delete dengan error handling
   const handleDelete = async (id: string) => {
     if (!confirm("Yakin hapus paket ini?")) return;
-    await fetch(`/api/admin/packages/${id}`, { method: "DELETE" });
-    fetchPackages();
+    
+    try {
+      const res = await fetch(`/api/admin/packages/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Gagal menghapus paket");
+      fetchPackages();
+    } catch (err: any) {
+      alert("❌ Error: " + err.message);
+    }
   };
 
   const filtered = packages.filter((p) =>
@@ -98,14 +132,26 @@ export default function PackagesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-serif font-bold text-brown-900">Paket Catering</h1>
-        <Button onClick={() => { setEditingId(null); setForm({ nama_paket: "", jenis: "Box", kategori: "Rapat", jumlah_pax: 50, harga_paket: 0, deskripsi: "" }); setDialogOpen(true); }} className="bg-brown-500 hover:bg-brown-600">
+        <Button 
+          onClick={() => { 
+            setEditingId(null); 
+            setForm({ nama_paket: "", jenis: "Box", kategori: "Rapat", jumlah_pax: 50, harga_paket: 0, deskripsi: "" }); 
+            setDialogOpen(true); 
+          }} 
+          className="bg-brown-500 hover:bg-brown-600"
+        >
           <Plus className="mr-2 h-4 w-4" /> Tambah Paket
         </Button>
       </div>
 
       <div className="relative w-80">
         <Search className="absolute left-3 top-3 h-4 w-4 text-brown-400" />
-        <Input placeholder="Cari paket..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 border-brown-200" />
+        <Input 
+          placeholder="Cari paket..." 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+          className="pl-10 border-brown-200" 
+        />
       </div>
 
       <div className="rounded-lg border border-brown-200 bg-white overflow-hidden">
@@ -121,20 +167,33 @@ export default function PackagesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? <TableRow><TableCell colSpan={6} className="text-center py-8">Loading...</TableCell></TableRow> :
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-brown-500">Loading...</TableCell>
+              </TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-brown-500">Tidak ada paket ditemukan</TableCell>
+              </TableRow>
+            ) : (
               filtered.map((pkg) => (
                 <TableRow key={pkg.id}>
                   <TableCell className="font-medium">{pkg.nama_paket}</TableCell>
                   <TableCell><Badge variant="secondary">{pkg.jenis}</Badge></TableCell>
                   <TableCell className="text-sm text-brown-600">{pkg.kategori.replace('_', ' ')}</TableCell>
                   <TableCell>{pkg.jumlah_pax}</TableCell>
-                  <TableCell className="font-semibold text-brown-700">Rp {Number(pkg.harga_paket).toLocaleString()}</TableCell>
+                  <TableCell className="font-semibold text-brown-700">Rp {Number(pkg.harga_paket).toLocaleString("id-ID")}</TableCell>
                   <TableCell className="text-right flex justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(pkg)}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(pkg.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(pkg)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(pkg.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -143,7 +202,12 @@ export default function PackagesPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit Paket" : "Tambah Paket Baru"}</DialogTitle>
+            {/* ✅ FIX: Tambah DialogDescription untuk hilangkan warning shadcn */}
+            <DialogDescription className="sr-only">
+              Form untuk {editingId ? "mengedit" : "menambahkan"} paket catering
+            </DialogDescription>
           </DialogHeader>
+          
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -161,6 +225,7 @@ export default function PackagesPage() {
                 </Select>
               </div>
             </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Kategori</Label>
@@ -175,17 +240,20 @@ export default function PackagesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Jumlah Pax</Label>
-                <Input type="number" required value={form.jumlah_pax} onChange={e => setForm({...form, jumlah_pax: Number(e.target.value)})} />
+                <Input type="number" required min="1" value={form.jumlah_pax} onChange={e => setForm({...form, jumlah_pax: Number(e.target.value)})} />
               </div>
             </div>
+            
             <div className="space-y-2">
               <Label>Harga Paket (Rp)</Label>
-              <Input type="number" required value={form.harga_paket} onChange={e => setForm({...form, harga_paket: Number(e.target.value)})} />
+              <Input type="number" required min="0" value={form.harga_paket} onChange={e => setForm({...form, harga_paket: Number(e.target.value)})} />
             </div>
+            
             <div className="space-y-2">
               <Label>Deskripsi</Label>
               <Input value={form.deskripsi} onChange={e => setForm({...form, deskripsi: e.target.value})} />
             </div>
+            
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
               <Button type="submit" className="bg-brown-500 hover:bg-brown-600">Simpan</Button>
