@@ -14,7 +14,7 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`;
     console.log("✅ [1/4] DB Connected.");
 
-    // 2. Ambil Statistik Paralel (Lebih Cepat)
+    // 2. Ambil Statistik Paralel
     console.log("📊 [2/4] Fetching stats...");
     const [
       totalOrders,
@@ -32,29 +32,53 @@ export async function GET() {
       prisma.pemesanan.aggregate({ _sum: { total_bayar: true } }),
     ]);
 
-    const totalRevenue = Number(revenueRes._sum.total_bayar || 0);
+    const totalRevenue = Number(revenueRes._sum.total_bayar) || 0;
     console.log("✅ [2/4] Stats fetched.");
 
-    // 3. Ambil Pesanan Terbaru
+    // 3. Ambil Pesanan Terbaru dengan null-safe handling
     console.log("📦 [3/4] Fetching recent orders...");
     const rawOrders = await prisma.pemesanan.findMany({
       take: 5,
       orderBy: { tgl_pesan: "desc" },
-      include: { pelanggan: { select: { nama_pelanggan: true } } },
+      include: { 
+        pelanggan: { 
+          select: { 
+            nama_pelanggan: true,
+            email: true, // Optional: kalau mau ditampilkan
+          }, 
+        }, 
+      },
+    });
+    console.log(`✅ [3/4] Found ${rawOrders.length} orders.`);
+
+    // 4. KONVERSI AMAN dengan null checks
+    console.log("🔄 [4/4] Serializing data...");
+    const recentOrders = rawOrders.map((o) => {
+      // ✅ Null-safe date conversion
+      const tglPesan = o.tgl_pesan instanceof Date 
+        ? o.tgl_pesan.toISOString() 
+        : o.tgl_pesan || new Date().toISOString();
+      
+      // ✅ Null-safe BigInt conversion
+      const totalBayar = o.total_bayar != null 
+        ? Number(o.total_bayar) 
+        : 0;
+
+      return {
+        id: o.id?.toString() || "unknown",
+        no_resi: o.no_resi || `#${o.id?.toString() || "0"}`,
+        tgl_pesan: tglPesan,
+        total_bayar: totalBayar,
+        status_pesan: o.status_pesan || "Unknown",
+        pelanggan: o.pelanggan 
+          ? { nama_pelanggan: o.pelanggan.nama_pelanggan || "Unknown" }
+          : { nama_pelanggan: "Unknown" },
+      };
     });
 
-    // 4. KONVERSI AMAN (BigInt & Date -> String/Number)
-    console.log("🔄 [4/4] Serializing data...");
-    const recentOrders = rawOrders.map((o) => ({
-      id: o.id.toString(),
-      no_resi: o.no_resi,
-      tgl_pesan: o.tgl_pesan.toISOString(),
-      total_bayar: Number(o.total_bayar),
-      status_pesan: o.status_pesan,
-      pelanggan: o.pelanggan,
-    }));
-
-    console.log(`✅ [Dashboard API] Success in ${Date.now() - start}ms`);
+    const duration = Date.now() - start;
+    console.log(`✅ [Dashboard API] Success in ${duration}ms`);
+    
     return NextResponse.json({
       stats: {
         totalOrders,
@@ -67,12 +91,28 @@ export async function GET() {
       recentOrders,
     });
   } catch (error: unknown) {
-    // 🔴 INI AKAN MUNCUL DI TERMINAL SERVER KAMU
-    console.error("❌ [Dashboard API] FAILED:", (error as Error).message);
-    console.error("📜 Stack:", (error as Error).stack?.split("\n").slice(0, 3).join("\n"));
+    // 🔴 Detailed error logging
+    const err = error as Error;
+    console.error("❌ [Dashboard API] FAILED:", err.message);
+    console.error("📜 Stack:", err.stack?.split("\n").slice(0, 5).join("\n"));
+    
+    // ✅ Log Prisma-specific errors
+    if (err.message?.includes("Prisma")) {
+      console.error("💡 Prisma Error Tips:");
+      console.error("   - Cek .env: DATABASE_URL sudah benar?");
+      console.error("   - Cek schema: Field 'pemesanan', 'pelanggan', dll ada?");
+      console.error("   - Jalankan: npx prisma db push");
+    }
 
     return NextResponse.json(
-      { error: (error as Error).message || "Internal Server Error" },
+      { 
+        error: err.message || "Internal Server Error",
+        // ✅ Tambah detail error di development saja
+        ...(process.env.NODE_ENV === "development" && {
+          details: err.stack,
+          hint: "Check terminal for detailed logs",
+        }),
+      },
       { status: 500 }
     );
   }

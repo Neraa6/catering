@@ -1,10 +1,12 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { 
-  ShoppingCart, Package, Users, TrendingUp, DollarSign, Clock, CheckCircle, BarChart3, Download
+  ShoppingCart, Package, Users, TrendingUp, DollarSign, Clock, CheckCircle, BarChart3, Download, Calendar
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +14,33 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import RevenueChart from "@/components/dashboard/revenue-chart";
+import { exportToExcel, exportToPDF, type ReportData, type ReportStats, type ReportOrder } from "@/lib/export-report";
 import Link from "next/link";
 
-const INITIAL_STATS = {
+// ✅ Interface untuk stats
+interface DashboardStats {
+  totalOrders: number;
+  totalRevenue: number;
+  totalCustomers: number;
+  totalPackages: number;
+  pendingOrders: number;
+  processingOrders: number;
+}
+
+// ✅ Interface untuk order
+interface DashboardOrder {
+  id: string;
+  no_resi?: string;
+  tgl_pesan: string;
+  total_bayar: number;
+  status_pesan: string;
+  pelanggan?: {
+    nama_pelanggan: string;
+  };
+}
+
+const INITIAL_STATS: DashboardStats = {
   totalOrders: 0,
   totalRevenue: 0,
   totalCustomers: 0,
@@ -23,75 +49,154 @@ const INITIAL_STATS = {
   processingOrders: 0,
 };
 
+// ✅ Type guard untuk stats
+function isValidStats(data: unknown): data is DashboardStats {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "totalOrders" in data &&
+    typeof (data as DashboardStats).totalOrders === "number"
+  );
+}
+
+// ✅ Type guard untuk orders array
+function isValidOrdersArray(data: unknown): data is DashboardOrder[] {
+  return Array.isArray(data) && data.every((item) => typeof item === "object" && item !== null && "id" in item);
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState(INITIAL_STATS);
-  const [recentOrders, setRecentOrders] = useState<unknown[]>([]);
+  const [stats, setStats] = useState<DashboardStats>(INITIAL_STATS);
+  const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [exportLoading, setExportLoading] = useState(false);
 
   const isOwner = user?.level === "owner";
   const isAdmin = user?.level === "admin";
 
   const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    try {
-      const response = await fetch("/api/admin/dashboard");
-      if (!response.ok) throw new Error("Gagal memuat data dashboard");
-
-      const data = await response.json();
-      setStats(data.stats || INITIAL_STATS);
-      setRecentOrders(data.recentOrders || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan jaringan");
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
+  try {
+    // ✅ Tentukan endpoint berdasarkan role
+    const endpoint = isOwner ? "/api/owner/dashboard" : "/api/admin/dashboard";
+    console.log(`🔍 Fetching from: ${endpoint}`); // Debug log
+    
+    const response = await fetch(endpoint);
+    
+    // ✅ Baca response text dulu untuk debug
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ API Error ${response.status}:`, errorText);
+      
+      let errorMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorJson.message || errorText;
+      } catch {}
+      
+      throw new Error(`Gagal memuat data: ${response.status} - ${errorMessage}`);
     }
-  };
+
+    const data: unknown = await response.json();
+    console.log("✅ API Response:", data); // Debug log
+    
+    // ✅ Type-safe parsing
+    if (typeof data === "object" && data !== null) {
+      const statsData = (data as { stats?: unknown }).stats;
+      const ordersData = (data as { recentOrders?: unknown }).recentOrders;
+      
+      if (isValidStats(statsData)) {
+        console.log("✅ Stats parsed:", statsData);
+        setStats(statsData);
+      } else {
+        console.warn("⚠️ Stats parsing failed:", statsData);
+      }
+      
+      if (isValidOrdersArray(ordersData)) {
+        console.log("✅ Orders parsed:", ordersData.length, "items");
+        setRecentOrders(ordersData);
+      } else {
+        console.warn("⚠️ Orders parsing failed:", ordersData);
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Terjadi kesalahan jaringan";
+    setError(message);
+    console.error("❌ Dashboard fetch error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData();
   }, []);
 
-  const handleExportReport = () => {
-    // Placeholder: nanti integrasi dengan library seperti 'xlsx' atau 'jspdf'
-    alert("Fitur export laporan akan segera hadir! 📊");
+  // ✅ Export dengan type-safe data preparation
+  const handleExportReport = async (format: "excel" | "pdf") => {
+    try {
+      setExportLoading(true);
+      
+      // ✅ Prepare data dengan type assertion yang aman
+      const reportData: ReportData = {
+        stats: { ...stats },
+        role: isOwner ? "owner" : "admin",
+        orders: recentOrders.map((order): ReportOrder => ({
+          no_resi: order.no_resi || `#${order.id}`,
+          pelanggan: order.pelanggan?.nama_pelanggan || "Unknown",
+          tanggal: new Date(order.tgl_pesan).toLocaleDateString("id-ID"),
+          total: Number(order.total_bayar),
+          status: order.status_pesan,
+        })),
+      };
+
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `Laporan_Culiner_${reportData.role}_${timestamp}`;
+
+      if (format === "excel") {
+        await exportToExcel(reportData, filename);
+      } else {
+        await exportToPDF(reportData, filename);
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("Gagal export laporan. Silakan coba lagi.");
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const statCards = [
     {
       title: "Total Pesanan",
-      value: stats?.totalOrders ?? 0,
+      value: stats.totalOrders,
       icon: ShoppingCart,
       color: "bg-blue-500",
-      trend: "+12%",
     },
     {
       title: "Pendapatan",
-      value: `Rp ${((stats?.totalRevenue ?? 0) / 1000000).toFixed(1)}Jt`,
+      value: `Rp ${(stats.totalRevenue / 1000000).toFixed(1)}Jt`,
       icon: DollarSign,
       color: "bg-green-500",
-      trend: "+8%",
+      ownerOnly: true,
     },
     {
       title: "Pelanggan",
-      value: stats?.totalCustomers ?? 0,
+      value: stats.totalCustomers,
       icon: Users,
       color: "bg-purple-500",
-      trend: "+15%",
     },
     {
       title: "Paket Catering",
-      value: stats?.totalPackages ?? 0,
+      value: stats.totalPackages,
       icon: Package,
       color: "bg-brown-500",
-      trend: "+3",
     },
-  ];
+  ].filter((card) => !card.ownerOnly || isOwner);
 
   const orderStatusColors: Record<string, string> = {
     Menunggu_Konfirmasi: "bg-yellow-100 text-yellow-800",
@@ -100,7 +205,6 @@ export default function AdminDashboard() {
     Selesai: "bg-green-100 text-green-800",
   };
 
-  // 🛡️ Loading State
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -110,7 +214,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // 🛡️ Error State
   if (error) {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -125,7 +228,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header dengan Role-Specific Actions */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-serif font-bold text-brown-900">
@@ -138,15 +241,26 @@ export default function AdminDashboard() {
           </p>
         </div>
         
-        {/* Owner Only: Export Button */}
+        {/* Export Buttons - Owner Only */}
         {isOwner && (
-          <Button 
-            onClick={handleExportReport}
-            variant="outline" 
-            className="border-brown-200 text-brown-700 hover:bg-brown-50"
-          >
-            <Download className="mr-2 h-4 w-4" /> Export Laporan
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handleExportReport("excel")}
+              disabled={exportLoading}
+              variant="outline" 
+              className="border-brown-200 text-brown-700 hover:bg-brown-50"
+            >
+              <Download className="mr-2 h-4 w-4" /> Excel
+            </Button>
+            <Button 
+              onClick={() => handleExportReport("pdf")}
+              disabled={exportLoading}
+              variant="outline" 
+              className="border-brown-200 text-brown-700 hover:bg-brown-50"
+            >
+              <Download className="mr-2 h-4 w-4" /> PDF
+            </Button>
+          </div>
         )}
       </div>
 
@@ -164,34 +278,43 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="text-lg lg:text-2xl font-bold text-brown-900">{stat.value}</div>
-              <p className="text-xs text-brown-500 mt-1 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-green-500" />
-                <span className="hidden sm:inline">{stat.trend} dari bulan lalu</span>
-                <span className="sm:hidden">{stat.trend}</span>
-              </p>
+              {stat.ownerOnly && (
+                <p className="text-xs text-brown-500 mt-1 flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-green-500" />
+                  <span className="hidden sm:inline">{stat.ownerOnly} dari bulan lalu</span>
+                  <span className="sm:hidden">{stat.ownerOnly}</span>
+                </p>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Owner Only: Revenue Chart Section */}
+      {/* Revenue Chart - Owner Only */}
       {isOwner && (
         <Card className="border-brown-200 bg-gradient-to-r from-brown-50 to-white">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-serif text-brown-900 flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-brown-500" />
-                Grafik Pendapatan Bulanan
-              </CardTitle>
-              <Badge variant="secondary" className="text-xs">2026</Badge>
+                <CardTitle className="text-lg font-serif text-brown-900">Grafik Pendapatan Bulanan</CardTitle>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-brown-500" />
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="px-3 py-1.5 border border-brown-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brown-500"
+                >
+                  {Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-48 flex flex-col items-center justify-center text-brown-400 border border-dashed border-brown-300 rounded-lg bg-white/50">
-              <BarChart3 className="h-12 w-12 mb-3 opacity-50" />
-              <p className="text-sm font-medium">Chart Area</p>
-              <p className="text-xs mt-1">Integrasi Recharts/Chart.js akan ditambahkan</p>
-            </div>
+            <RevenueChart year={selectedYear} />
           </CardContent>
         </Card>
       )}
@@ -235,7 +358,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-xs lg:text-sm text-brown-600">Pesanan Selesai</p>
                 <p className="text-xl lg:text-2xl font-bold text-brown-900">
-                  {Math.max(0, (stats.totalOrders || 0) - stats.pendingOrders - stats.processingOrders)}
+                  {Math.max(0, stats.totalOrders - stats.pendingOrders - stats.processingOrders)}
                 </p>
               </div>
             </div>
@@ -254,7 +377,6 @@ export default function AdminDashboard() {
           </Link>
         </CardHeader>
         <CardContent className="p-0">
-          {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
@@ -268,17 +390,17 @@ export default function AdminDashboard() {
               </TableHeader>
               <TableBody>
                 {recentOrders.length > 0 ? (
-                  recentOrders.map((order: unknown) => (
-                    <TableRow key={(order as { id: string }).id} className="hover:bg-brown-50">
-                      <TableCell className="font-medium">{(order as { no_resi?: string }).no_resi || `#${(order as { id: string }).id}`}</TableCell>
-                      <TableCell>{(order as { pelanggan?: { nama_pelanggan: string } }).pelanggan?.nama_pelanggan || "Unknown"}</TableCell>
-                      <TableCell>{new Date((order as { tgl_pesan: string }).tgl_pesan).toLocaleDateString("id-ID")}</TableCell>
+                  recentOrders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-brown-50">
+                      <TableCell className="font-medium">{order.no_resi || `#${order.id}`}</TableCell>
+                      <TableCell>{order.pelanggan?.nama_pelanggan || "Unknown"}</TableCell>
+                      <TableCell>{new Date(order.tgl_pesan).toLocaleDateString("id-ID")}</TableCell>
                       <TableCell className="font-semibold text-brown-700 text-right">
-                        Rp {Number((order as { total_bayar: number }).total_bayar).toLocaleString("id-ID")}
+                        Rp {Number(order.total_bayar).toLocaleString("id-ID")}
                       </TableCell>
                       <TableCell>
-                        <Badge className={orderStatusColors[(order as { status_pesan: string }).status_pesan] || "bg-gray-100"}>
-                          {(order as { status_pesan: string }).status_pesan.replace(/_/g, " ")}
+                        <Badge className={orderStatusColors[order.status_pesan] || "bg-gray-100"}>
+                          {order.status_pesan.replace(/_/g, " ")}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -297,28 +419,28 @@ export default function AdminDashboard() {
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-brown-100">
             {recentOrders.length > 0 ? (
-              recentOrders.map((order: unknown) => (
-                <div key={(order as { id: string }).id} className="p-4 space-y-3">
+              recentOrders.map((order) => (
+                <div key={order.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-brown-900 truncate">
-                        {(order as { no_resi?: string }).no_resi || `#${(order as { id: string }).id}`}
+                        {order.no_resi || `#${order.id}`}
                       </p>
-                      <p className="text-sm text-brown-600">{(order as { pelanggan?: { nama_pelanggan: string } }).pelanggan?.nama_pelanggan || "Unknown"}</p>
+                      <p className="text-sm text-brown-600">{order.pelanggan?.nama_pelanggan || "Unknown"}</p>
                     </div>
-                    <Badge className={orderStatusColors[(order as { status_pesan: string }).status_pesan] || "bg-gray-100"}>
-                      {(order as { status_pesan: string }).status_pesan.replace(/_/g, " ")}
+                    <Badge className={orderStatusColors[order.status_pesan] || "bg-gray-100"}>
+                      {order.status_pesan.replace(/_/g, " ")}
                     </Badge>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-brown-500">Tanggal</span>
-                      <span className="font-medium">{new Date((order as { tgl_pesan: string }).tgl_pesan).toLocaleDateString("id-ID")}</span>
+                      <span className="font-medium">{new Date(order.tgl_pesan).toLocaleDateString("id-ID")}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-brown-500">Total</span>
                       <span className="font-semibold text-brown-700">
-                        Rp {Number((order as { total_bayar: number }).total_bayar).toLocaleString("id-ID")}
+                        Rp {Number(order.total_bayar).toLocaleString("id-ID")}
                       </span>
                     </div>
                   </div>

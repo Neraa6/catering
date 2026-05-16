@@ -11,9 +11,10 @@ import {
   Truck, 
   Settings,
   LogOut,
-  Menu,
-  UtensilsCrossed} from "lucide-react";
-import { Button } from "@/components/ui/button";
+  UtensilsCrossed,
+  Globe, // ✅ Icon untuk "Lihat Website"
+} from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
@@ -70,7 +71,7 @@ function SidebarContent({
         </div>
       </div>
 
-      {/* User Info */}
+      {/* User Info + Role Badge */}
       <div className="p-4 border-b border-brown-800 bg-brown-900/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-brown-500 flex items-center justify-center flex-shrink-0 border-2 border-brown-300">
@@ -81,6 +82,15 @@ function SidebarContent({
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm truncate text-white">{user.name}</p>
             <p className="text-xs text-brown-300 truncate">{user.email}</p>
+            {/* ✅ Role Badge dipindah ke sini */}
+            <span className={cn(
+              "inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium mt-1 text-brown-300",
+              isAdmin 
+                ? "bg-purple-500/20 border border-purple-500/30" 
+                : "bg-gold-500/20 border border-gold-500/30"
+            )}>
+              {isAdmin ? "Administrator" : "Owner"}
+            </span>
           </div>
         </div>
       </div>
@@ -110,14 +120,27 @@ function SidebarContent({
         })}
       </nav>
 
-      {/* Logout Button in Sidebar */}
-      <div className="p-3 border-t border-brown-800 bg-brown-900/50">
+      {/* ✅ Bottom Section: Lihat Website + Logout */}
+      <div className="p-3 border-t border-brown-800 bg-brown-900/50 space-y-1">
+        {/* Link ke Website Utama */}
+        <button
+          onClick={() => {
+            router.push("/");
+            setMobileMenuOpen(false);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brown-200 hover:bg-brown-800 hover:text-white transition-colors"
+        >
+          <Globe className="w-5 h-5 flex-shrink-0" />
+          <span className="font-semibold text-sm truncate text-brown-300">Lihat Website</span>
+        </button>
+
+        {/* Logout Button */}
         <button
           onClick={onLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-300 hover:bg-brown-800 hover:text-red-200 transition-colors"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          <span>Logout</span>
+          <span className="font-semibold text-sm truncate text-red-300">Logout</span>
         </button>
       </div>
     </div>
@@ -154,10 +177,6 @@ export default function AdminLayout({
       </div>
     );
   }
-
-  const isAdmin = user.level === "admin";
-
-  // ✅ Handle logout function
   const handleLogout = () => {
     if (window.confirm("Apakah Anda yakin ingin logout?")) {
       logout();
@@ -190,84 +209,12 @@ export default function AdminLayout({
         </SheetContent>
       </Sheet>
 
-      {/* Main Content Wrapper */}
+      {/* ✅ Main Content - TANPA HEADER/NAVBAR */}
       <div className={cn("transition-all duration-300", "lg:pl-64")}>
+        {/* ✅ HAPUS: <header>...</header> yang lama */}
         
-        {/* ✅ Top Bar dengan Logout Button */}
-        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-brown-200 shadow-sm">
-          <div className="flex items-center justify-between px-4 py-3 lg:px-6">
-            <div className="flex items-center gap-3">
-              {/* Mobile Menu Trigger */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileMenuOpen(true)}
-                className="lg:hidden hover:bg-brown-100"
-              >
-                <Menu className="h-6 w-6 text-brown-600" />
-              </Button>
-              
-              {/* Mobile Title */}
-              <h1 className="text-lg font-serif font-semibold text-brown-900 lg:hidden">
-                Culiner Admin
-              </h1>
-            </div>
-            
-            {/* Right Actions */}
-            <div className="flex items-center gap-2 lg:gap-4">
-              {/* Role Badge */}
-              <span className={cn(
-                "hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                isAdmin 
-                  ? "bg-purple-50 text-purple-700 border-purple-200" 
-                  : "bg-gold-50 text-gold-700 border-gold-200"
-              )}>
-                {isAdmin ? "Administrator" : "Owner"}
-              </span>
-
-              {/* Link ke Website Utama */}
-              <Button
-                onClick={() => router.push("/")}
-                variant="outline"
-                size="sm"
-                className="hidden sm:inline-flex border-brown-200 text-brown-600 hover:bg-brown-50 hover:text-brown-900"
-              >
-                <UtensilsCrossed className="mr-2 h-4 w-4" />
-                Lihat Website
-              </Button>
-              
-              {/* Mobile Icon Link */}
-              <Button
-                onClick={() => router.push("/")}
-                variant="ghost"
-                size="icon"
-                className="lg:hidden text-brown-600 hover:bg-brown-100"
-              >
-                <UtensilsCrossed className="h-5 w-5" />
-              </Button>
-
-              {/* ✅ TOMBOL LOGOUT DI HEADER */}
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                title="Logout"
-              >
-                <LogOut className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-              
-              {/* User Avatar */}
-              <div className="w-8 h-8 rounded-full bg-brown-500 flex items-center justify-center text-white text-sm font-semibold border-2 border-brown-300">
-                {user.name?.charAt(0).toUpperCase()}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="p-4 lg:p-6 min-h-[calc(100vh-4rem)]">
+        {/* Page Content - Full width */}
+        <main className="p-4 lg:p-6 min-h-screen">
           {children}
         </main>
       </div>
