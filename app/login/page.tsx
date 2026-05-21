@@ -117,13 +117,6 @@ export default function LoginPage() {
             </div>
 
             {/* Demo Accounts */}
-            <div className="mt-6 p-4 bg-brown-50 rounded-lg border border-brown-200">
-              <p className="text-xs text-brown-600 font-semibold mb-2 text-center">Demo Account:</p>
-              <div className="text-xs text-brown-500 space-y-1">
-                <p><strong>Admin:</strong> admin@culineryuk.com / admin123</p>
-                <p><strong>User:</strong> budi@email.com / user123</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
