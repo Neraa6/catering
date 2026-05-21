@@ -49,69 +49,109 @@ export default function ProfilePage() {
   }, [user]);
 
   const fetchProfile = async () => {
-    try {
-      const response = await fetch(`/api/customer/profile?email=${encodeURIComponent(user!.email)}`);
-      const data = await response.json();
-      
-      if (response.ok && data) {
-        setFormData({
-          nama_pelanggan: data.nama_pelanggan || "",
-          email: data.email || "",
-          telepon: data.telepon || "",
-          alamat1: data.alamat1 || "",
-          alamat2: data.alamat2 || "",
-          alamat3: data.alamat3 || "",
-          tgl_lahir: data.tgl_lahir ? new Date(data.tgl_lahir).toISOString().split('T')[0] : "",
-          kartu_id: data.kartu_id || "",
-          foto: data.foto || "",
-        });
-        
-        // ✅ Cek kelengkapan data (field wajib)
-        const required = ["nama_pelanggan", "telepon", "alamat1"];
-        const complete = required.every(field => data[field]?.trim());
-        setIsComplete(complete);
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
+  if (!user?.email) return;
+
+  try {
+    const response = await fetch(`/api/customer/profile?email=${encodeURIComponent(user.email)}`);
+    
+    // ✅ 1. Cek status HTTP dulu
+    if (!response.ok) {
+      const text = await response.text(); // Baca body asli (bisa HTML error)
+      console.error(`❌ API Error ${response.status}:`, text.substring(0, 300));
+      throw new Error(`Gagal memuat profil: ${response.status}`);
     }
-  };
+    
+    // ✅ 2. Pastikan content-type adalah JSON
+    const contentType = response.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
+      console.error("❌ Response bukan JSON:", contentType);
+      throw new Error("Server tidak mengembalikan format JSON");
+    }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch("/api/customer/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          _email: user?.email,
-          get email() {
-            return this._email;
-          },
-          set email(value) {
-            this._email = value;
-          },
-          ...formData,
-        }),
+    // ✅ 3. Baru parse JSON
+    const data = await response.json();
+    
+    if (data) {
+      setFormData({
+        nama_pelanggan: data.nama_pelanggan || "",
+        email: data.email || "",
+        telepon: data.telepon || "",
+        alamat1: data.alamat1 || "",
+        alamat2: data.alamat2 || "",
+        alamat3: data.alamat3 || "",
+        tgl_lahir: data.tgl_lahir ? new Date(data.tgl_lahir).toISOString().split('T')[0] : "",
+        kartu_id: data.kartu_id || "",
+        foto: data.foto || "",
       });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: "success", text: "✅ Data profil berhasil diperbarui!" });
-        fetchProfile(); // Refresh data
-      } else {
-        setMessage({ type: "error", text: result.error || "Gagal memperbarui profil" });
-      }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      setMessage({ type: "error", text: "Terjadi kesalahan koneksi" });
-    } finally {
-      setLoading(false);
+      
+      const required = ["nama_pelanggan", "telepon", "alamat1"];
+      const complete = required.every(field => data[field]?.trim());
+      setIsComplete(complete);
     }
-  };
+  } catch (err) {
+    console.error("Fetch profile failed:", err);
+    setMessage({ type: "error", text: "Gagal memuat data profil" });
+  }
+};
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage(null);
+
+  try {
+    // ✅ 1. Siapkan data yang VALID saja (filter field yang tidak dikenal)
+    const validFields = {
+      nama_pelanggan: formData.nama_pelanggan,
+      telepon: formData.telepon,
+      alamat1: formData.alamat1,
+      alamat2: formData.alamat2,
+      alamat3: formData.alamat3,
+      tgl_lahir: formData.tgl_lahir,
+      kartu_id: formData.kartu_id,
+      foto: formData.foto,
+      // ❌ JANGAN kirim 'email' via formData karena email adalah primary key (tidak boleh diupdate)
+      // ✅ Email hanya digunakan di 'where' clause, bukan di 'data' clause
+    };
+
+    const response = await fetch("/api/customer/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: user?.email, // ✅ Email untuk identifikasi (WHERE clause)
+        ...validFields,     // ✅ Data yang boleh diupdate (DATA clause)
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Gagal memperbarui profil");
+    }
+
+    const result = await response.json();
+    
+    // ✅ Update state lokal dengan data terbaru
+    setFormData({
+      nama_pelanggan: result.nama_pelanggan || "",
+      email: result.email || "",
+      telepon: result.telepon || "",
+      alamat1: result.alamat1 || "",
+      alamat2: result.alamat2 || "",
+      alamat3: result.alamat3 || "",
+      tgl_lahir: result.tgl_lahir ? new Date(result.tgl_lahir).toISOString().split('T')[0] : "",
+      kartu_id: result.kartu_id || "",
+      foto: result.foto || "",
+    });
+
+    setMessage({ type: "success", text: "✅ Data profil berhasil diperbarui!" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan koneksi";
+    setMessage({ type: "error", text: message });
+    console.error("Submit error:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
