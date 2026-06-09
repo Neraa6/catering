@@ -135,7 +135,7 @@ export default function CartPage() {
                 <div className="pt-4 border-t space-y-3">
                   <Button
                     onClick={handleCheckout}
-                    className="w-full bg-brand-500 hover:bg-brand-600 text-white h-12 text-lg"
+                    className="w-full bg-brand-500 hover:bg-brand-600 text-black h-12 text-lg"
                   >
                     Lanjut ke Checkout
                   </Button>
